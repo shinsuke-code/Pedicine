@@ -677,6 +677,63 @@ function PetSearchInput({ pets, selectedPet, onSelect, onRegister }) {
   );
 }
 
+// ── スワイプ削除コンポーネント ─────────────────────────────────────────────────
+function SwipeToDelete({ onDelete, children }) {
+  const [startX, setStartX] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const THRESHOLD = 80; // 削除確定に必要なスワイプ距離
+
+  const handleTouchStart = (e) => {
+    setStartX(e.touches[0].clientX);
+    setSwiping(true);
+  };
+  const handleTouchMove = (e) => {
+    if (!swiping) return;
+    const diff = e.touches[0].clientX - startX;
+    if (diff < 0) setOffsetX(Math.max(diff, -120));
+  };
+  const handleTouchEnd = () => {
+    setSwiping(false);
+    if (offsetX < -THRESHOLD) {
+      // 削除確定：アニメーション後に削除
+      setOffsetX(-400);
+      setTimeout(() => onDelete(), 250);
+    } else {
+      setOffsetX(0);
+    }
+  };
+
+  return (
+    <div style={{ position:"relative", overflow:"hidden" }}>
+      {/* 削除背景 */}
+      <div style={{
+        position:"absolute", inset:0, background:"#ef4444",
+        display:"flex", alignItems:"center", justifyContent:"flex-end",
+        paddingRight:24, borderRadius:0,
+      }}>
+        <div style={{ color:"#fff", fontSize:12, fontWeight:700, textAlign:"center", lineHeight:1.4 }}>
+          <div style={{ fontSize:18, marginBottom:2 }}>🗑️</div>
+          削除
+        </div>
+      </div>
+      {/* スワイプ対象コンテンツ */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          transform:`translateX(${offsetX}px)`,
+          transition: swiping ? "none" : "transform 0.25s ease",
+          position:"relative", zIndex:1, background:"transparent",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // ── ナビバー ──────────────────────────────────────────────────────────────────
 function NavBar({ active, setScreen, setSent, setSaved }) {
   return (
@@ -882,37 +939,40 @@ export default function Pedicine() {
               {pending.map((rx,idx)=>{
                 const pet = pets.find(p=>p.name===rx.pet);
                 return (
-                  <div key={rx.id} onClick={()=>setPendingDetail(rx)}
-                    style={{ padding:"12px 14px", borderBottom:idx<pending.length-1?"1px solid #fde68a":"none", cursor:"pointer" }}
-                    onMouseEnter={e=>e.currentTarget.style.background="#fef9c3"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                      <div style={{ flexShrink:0 }}>
-                        {pet ? <PetIcon species={pet.species} breed={pet.breed} size={42}/> : <div style={{ width:42, height:42, borderRadius:"50%", background:"#fef3c7", display:"flex", alignItems:"center", justifyContent:"center", color:"#ccc", fontSize:18 }}>?</div>}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                          <div>
-                            <span style={{ fontWeight:800, fontSize:14 }}>{rx.pet}</span>
-                            <span style={{ fontSize:11, color:"#92400e", marginLeft:5 }}>({rx.owner})</span>
-                          </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                            <span style={{ fontSize:11, color:"#92400e", fontWeight:600 }}>{rx.date}</span>
-                            <span style={{ fontSize:13, color:"#b45309" }}>›</span>
-                          </div>
+                  <SwipeToDelete key={rx.id} onDelete={()=>setHistory(history.filter(h=>h.id!==rx.id))}>
+                    <div onClick={()=>setPendingDetail(rx)}
+                      style={{ padding:"12px 14px", borderBottom:idx<pending.length-1?"1px solid #fde68a":"none", cursor:"pointer", background:"#fffbeb" }}
+                      onMouseEnter={e=>e.currentTarget.style.background="#fef9c3"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fffbeb"}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ flexShrink:0 }}>
+                          {pet ? <PetIcon species={pet.species} breed={pet.breed} size={42}/> : <div style={{ width:42, height:42, borderRadius:"50%", background:"#fef3c7", display:"flex", alignItems:"center", justifyContent:"center", color:"#ccc", fontSize:18 }}>?</div>}
                         </div>
-                        <div style={{ fontSize:11, color:"#b45309", marginTop:2 }}>{rx.id}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                            <div>
+                              <span style={{ fontWeight:800, fontSize:14 }}>{rx.pet}</span>
+                              <span style={{ fontSize:11, color:"#92400e", marginLeft:5 }}>({rx.owner})</span>
+                            </div>
+                            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                              <span style={{ fontSize:11, color:"#92400e", fontWeight:600 }}>{rx.date}</span>
+                              <span style={{ fontSize:13, color:"#b45309" }}>›</span>
+                            </div>
+                          </div>
+                          <div style={{ fontSize:11, color:"#b45309", marginTop:2 }}>{rx.id}</div>
+                        </div>
                       </div>
+                      <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:5 }}>
+                        {rx.items.map((it,i)=>(
+                          <span key={i} style={{ background:"#fef3c7", color:"#78350f", borderRadius:20, padding:"3px 9px", fontSize:11, fontWeight:600, border:"1px solid #fde68a" }}>
+                            {it.name} <span style={{ background:"#fcd34d", borderRadius:8, padding:"1px 5px", fontSize:10 }}>{it.qty}</span>
+                          </span>
+                        ))}
+                      </div>
+                      {rx.total>0 && <div style={{ fontSize:11, color:"#b45309", marginTop:5, fontWeight:600 }}>合計 ¥{rx.total.toLocaleString()}</div>}
+                      <div style={{ fontSize:10, color:"#b45309", marginTop:4, opacity:0.6 }}>← 左にスワイプで削除</div>
                     </div>
-                    <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:5 }}>
-                      {rx.items.map((it,i)=>(
-                        <span key={i} style={{ background:"#fef3c7", color:"#78350f", borderRadius:20, padding:"3px 9px", fontSize:11, fontWeight:600, border:"1px solid #fde68a" }}>
-                          {it.name} <span style={{ background:"#fcd34d", borderRadius:8, padding:"1px 5px", fontSize:10 }}>{it.qty}</span>
-                        </span>
-                      ))}
-                    </div>
-                    {rx.total>0 && <div style={{ fontSize:11, color:"#b45309", marginTop:5, fontWeight:600 }}>合計 ¥{rx.total.toLocaleString()}</div>}
-                  </div>
+                  </SwipeToDelete>
                 );
               })}
             </div>
