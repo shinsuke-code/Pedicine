@@ -411,7 +411,7 @@ function ConfirmModal({ pet, rxItems, doctorNote, onConfirm, onSave, onBack }) {
 }
 
 // ── 待機中 内容確認モーダル ────────────────────────────────────────────────────
-function PendingDetailModal({ rx, pet, onEdit, onSendNow, onClose }) {
+function PendingDetailModal({ rx, pet, onEdit, onSendNow, onDelete, onClose }) {
   const subtotal = rx.items.reduce((s,it)=>{
     const med = MEDICINES.find(m=>m.name===it.name);
     const qtyNum = parseInt(it.qty)||0;
